@@ -76,8 +76,8 @@ function createLine(fromX, fromY, toX, toY, stroke, width, alpha) {
 }
 
 function buildOptionsAsJSON(canvas, iSpeed) {
-    var centerX = 339,
-        centerY = 339,
+    var centerX = 500,
+        centerY = 288,
         radius = 227,
         outerRadius = 323;
 
@@ -95,7 +95,7 @@ function buildOptionsAsJSON(canvas, iSpeed) {
 }
 
 function clearCanvas(options) {
-    options.ctx.clearRect(0, 0, 711, 354);
+    options.ctx.clearRect(0, 0, 1000, 391);
 }
 
 function applyDefaultContextSettings(options) {
@@ -127,12 +127,12 @@ function drawMetallicArc(options) {
 function drawBackground(options) {
     options.ctx.globalAlpha = 1.0;
     options.ctx.fillStyle = "rgb(0,0,0)";
-    options.ctx.fillRect(15, 15, 678, 323);
+    options.ctx.fillRect(15, 15, 970, 356);
 }
 
 
 function drawSmallTickMarks(options) {
-    var tickvalue = options.levelRadius - 8;
+    var tickvalue = options.levelRadius + 28;
     var gaugeOptions = options.gaugeOptions;
     applyDefaultContextSettings(options);
 
@@ -154,7 +154,7 @@ function drawSmallTickMarks(options) {
 }
 
 function drawLargeTickMarks(options) {
-    var tickvalue = options.levelRadius - 2;
+    var tickvalue = options.levelRadius + 22;
     var gaugeOptions = options.gaugeOptions;
     applyDefaultContextSettings(options);
 
@@ -190,8 +190,9 @@ function drawTextMarkers(options) {
     options.ctx.beginPath();
 
     for (var iTick = 10; iTick < 180; iTick += 20) {
-        var innerTickX = gaugeOptions.radius - (Math.cos(degToRad(iTick)) * gaugeOptions.radius);
-        var innerTickY = gaugeOptions.radius - (Math.sin(degToRad(iTick)) * gaugeOptions.radius);
+        var textRadius = gaugeOptions.radius * 1.1;
+        var innerTickX = gaugeOptions.radius - (Math.cos(degToRad(iTick)) * textRadius);
+        var innerTickY = gaugeOptions.radius - (Math.sin(degToRad(iTick)) * textRadius);
         var xPos = (options.center.X - gaugeOptions.radius - 12) + innerTickX;
         var yPos = (gaugeOptions.center.Y - gaugeOptions.radius - 12) + innerTickY;
 
@@ -199,8 +200,8 @@ function drawTextMarkers(options) {
         if (iTick < 50) { xPos -= 5; yPos += 5; }
         else if (iTick < 90) { /* default */ }
         else if (iTick == 90) { xPos += 4; }
-        else if (iTick < 145) { xPos += 10; }
-        else { xPos += 15; yPos += 5; }
+        else if (iTick < 145) { xPos += 15; }
+        else { xPos += 25; yPos += 5; }
 
         options.ctx.fillText(iTickToPrint, xPos, yPos);
         iTickToPrint += 25;  // Increment by 25 to reach 200
@@ -334,11 +335,86 @@ function drawSpeedBox(options, speedLimit, isSlipping) {
     options.ctx.fillText(Math.round(options.speed), boxX + boxWidth / 2, boxY + boxHeight / 2);
 }
 
+function drawBrakeBox(options, brakeValue) {
+    var boxWidth = 135;
+    var boxHeight = 85;
+    // Position below the speed box
+    var boxX = options.center.X - (boxWidth / 2) + 250;
+    var boxY = options.center.Y + (boxHeight * 0.3) - 39;
+    
+    // White box
+    var boxColor = "rgb(255, 255, 255)";
+    
+    // Draw white outlined box
+    options.ctx.strokeStyle = boxColor;
+    options.ctx.lineWidth = 3.6;
+    options.ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    
+    // Draw brake value as percentage
+    options.ctx.fillStyle = boxColor;
+    options.ctx.font = 'bold 41px sans-serif';
+    options.ctx.textAlign = 'center';
+    options.ctx.textBaseline = 'middle';
+    
+    var displayValue = brakeValue !== undefined && brakeValue !== null ? Math.round(brakeValue) + '%' : '--';
+    options.ctx.fillText(displayValue, boxX + boxWidth / 2, boxY + boxHeight / 2);
+}
+
+function drawLocomotiveBrakeBox(options, locomotiveBrakeValue) {
+    var boxWidth = 135;
+    var boxHeight = 85;
+    // Position to the left of the train brake box
+    var boxX = options.center.X - (boxWidth / 2) + 250 - boxWidth - 15;
+    var boxY = options.center.Y + (boxHeight * 0.3) - 39;
+    
+    // White box
+    var boxColor = "rgb(255, 255, 255)";
+    
+    // Draw white outlined box
+    options.ctx.strokeStyle = boxColor;
+    options.ctx.lineWidth = 3.6;
+    options.ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    
+    // Draw locomotive brake value as percentage
+    options.ctx.fillStyle = boxColor;
+    options.ctx.font = 'bold 41px sans-serif';
+    options.ctx.textAlign = 'center';
+    options.ctx.textBaseline = 'middle';
+    
+    var displayValue = locomotiveBrakeValue !== undefined && locomotiveBrakeValue !== null ? Math.round(locomotiveBrakeValue * 100) + '%' : '--';
+    options.ctx.fillText(displayValue, boxX + boxWidth / 2, boxY + boxHeight / 2);
+}
+
+function drawElectricDynamicBrakeBox(options, electricDynamicBrakeValue) {
+    var boxWidth = 135;
+    var boxHeight = 85;
+    // Position to the left of the locomotive brake box
+    var boxX = options.center.X - (boxWidth / 2) + 250 - (boxWidth * 2) - 30;
+    var boxY = options.center.Y + (boxHeight * 0.3) - 39;
+    
+    // White box
+    var boxColor = "rgb(255, 255, 255)";
+    
+    // Draw white outlined box
+    options.ctx.strokeStyle = boxColor;
+    options.ctx.lineWidth = 3.6;
+    options.ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    
+    // Draw electric dynamic brake value as percentage
+    options.ctx.fillStyle = boxColor;
+    options.ctx.font = 'bold 41px sans-serif';
+    options.ctx.textAlign = 'center';
+    options.ctx.textBaseline = 'middle';
+    
+    var displayValue = electricDynamicBrakeValue !== undefined && electricDynamicBrakeValue !== null ? Math.round(electricDynamicBrakeValue) + '%' : '--';
+    options.ctx.fillText(displayValue, boxX + boxWidth / 2, boxY + boxHeight / 2);
+}
+
 function drawSpeedLimitBox(options, speedLimit) {
     var boxWidth = 97;
     var boxHeight = 61;
     // Position in top right corner of canvas
-    var boxX = 711 - boxWidth - 26;
+    var boxX = 1000 - boxWidth - 26;
     var boxY = 26;
     
     // White box
@@ -363,7 +439,7 @@ function drawPowerHandleBox(options, powerHandle) {
     var boxWidth = 97;
     var boxHeight = 61;
     // Position below speed limit box
-    var boxX = 711 - boxWidth - 26;
+    var boxX = 1000 - boxWidth - 26;
     var boxY = 26 + 61 + 12; // Below speed limit box with 12px gap
     
     // White box
@@ -389,7 +465,7 @@ function drawGradientBox(options, incline) {
     var boxWidth = 97;
     var boxHeight = 61;
     // Position below power handle box
-    var boxX = 711 - boxWidth - 26;
+    var boxX = 1000 - boxWidth - 26;
     var boxY = 26 + 61 + 12 + 61 + 12; // Below power handle box with 12px gap
     
     // White box
@@ -460,7 +536,7 @@ function drawDistanceToNextSpeedLimitBox(options, distance) {
     options.ctx.fillText(displayValue, boxX + boxWidth / 2, boxY + boxHeight / 2);
 }
 
-function draw(iSpeed, speedLimit, isSlipping, powerHandle, incline, nextSpeedLimit, distanceToNextSpeedLimit) {
+function draw(iSpeed, speedLimit, isSlipping, powerHandle, incline, nextSpeedLimit, distanceToNextSpeedLimit, trainBrakeValue, locomotiveBrakeValue, electricDynamicBrakeValue) {
     var canvas = document.getElementById('tutorial');
     if (canvas !== null && canvas.getContext) {
         var options = buildOptionsAsJSON(canvas, iSpeed);
@@ -474,6 +550,9 @@ function draw(iSpeed, speedLimit, isSlipping, powerHandle, incline, nextSpeedLim
             drawCircleAtLimit(options, speedLimit);
         }
         drawSpeedBox(options, speedLimit, isSlipping);
+        drawBrakeBox(options, trainBrakeValue);
+        drawLocomotiveBrakeBox(options, locomotiveBrakeValue);
+        drawElectricDynamicBrakeBox(options, electricDynamicBrakeValue);
         drawSpeedLimitBox(options, speedLimit);
         drawPowerHandleBox(options, powerHandle);
         drawGradientBox(options, incline);
@@ -490,7 +569,7 @@ function draw(iSpeed, speedLimit, isSlipping, powerHandle, incline, nextSpeedLim
 </head>
 <body onload='draw(0);'>
    
-    <canvas id="tutorial" width="711" height="354">Canvas not available.</canvas>
+    <canvas id="tutorial" width="1000" height="391">Canvas not available.</canvas>
     
     <div id="display">Waiting for data...</div>    
     <script>
@@ -502,7 +581,7 @@ function draw(iSpeed, speedLimit, isSlipping, powerHandle, incline, nextSpeedLim
             // Display the data on the page
             document.getElementById('display').innerText = JSON.stringify(data, null, 2);
             // Update the speedometer with the new speed value and limit
-            draw(Math.round(data.speed), data.limit, data.isSlipping, data.powerHandle, data.incline, data.nextSpeedLimit, data.distanceToNextSpeedLimit);
+            draw(Math.round(data.speed), data.limit, data.isSlipping, data.powerHandle, data.incline, data.nextSpeedLimit, data.distanceToNextSpeedLimit, data.trainBreak, data.locomotiveBrakeHandle, data.electricDynamicBrake);
         };
 
         eventSource.onerror = () => {
