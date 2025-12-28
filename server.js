@@ -6,6 +6,15 @@ const axios = require('axios');
 // Read the API key from the specified file
 const apiKeyPath = 'C:\\Users\\<YOUR_USER_HERE>\\Documents\\My Games\\TrainSimWorld5\\Saved\\Config\\CommAPIKey.txt';
 
+// Set to true for miles, false for kilometers
+const useMiles = true;
+
+// Speed conversion factor: m/s to km/h = 3.6, m/s to mph = 2.23694
+const speedConversionFactor = useMiles ? 2.23694 : 3.6;
+
+// Distance conversion factor: cm to meters = 100, cm to feet = 30.48
+const distanceConversionFactor = useMiles ? 30.48 : 100;
+
 let apiKey = '';
 try {
     apiKey = fs.readFileSync(apiKeyPath, 'utf8').trim();
@@ -131,9 +140,12 @@ const server = http.createServer((req, res) => {
             gearIndex: 0,
             electricBrakeHandle: 0,
             electricDynamicBrake: 0,
+            electricBrakeActive: false,
             locomotiveBrakeHandle: 0,
+            locomotiveBrakeActive: false,
             trainBrakeHandle: 0,
             trainBreak: 0,
+            trainBrakeActive: false,
             isTractionLocked: false,
             steamBoilerPressure: 0,
             steamChestPressure: 0,
@@ -154,8 +166,8 @@ const server = http.createServer((req, res) => {
               if (entry.NodeValid && entry.Values) {
                 // Extract speed from HUD_GetSpeed
                 if (entry.Path === 'CurrentDrivableActor.Function.HUD_GetSpeed' && entry.Values['Speed (ms)']) {
-                  // Convert m/s to km/h (multiply by 3.6)
-                  formattedData.speed = Math.round(entry.Values['Speed (ms)'] * 3.6);
+                  // Convert m/s to km/h or mph
+                  formattedData.speed = Math.round(entry.Values['Speed (ms)'] * speedConversionFactor);
                   // console.log('Fetched speed from TSW:', formattedData.speed);
                 }
                 // Extract power handle value
@@ -164,7 +176,9 @@ const server = http.createServer((req, res) => {
                   const isNegative = entry.Values['IsNegative'];
                   // If IsNegative field exists and is true, make the value negative
                   // Otherwise, use the Power value as-is (it may already be negative)
-                  formattedData.powerHandle = (isNegative === true) ? -Math.abs(powerValue) : powerValue;
+                  // Round up using Math.ceil for positive values, Math.floor for negative values
+                  const roundedValue = powerValue >= 0 ? Math.ceil(powerValue) : Math.floor(powerValue);
+                  formattedData.powerHandle = (isNegative === true) ? -Math.abs(roundedValue) : roundedValue;
                 }
                 // Extract direction
                 else if (entry.Path === 'CurrentDrivableActor.Function.HUD_GetDirection' && entry.Values['Direction'] !== undefined) {
@@ -187,11 +201,11 @@ const server = http.createServer((req, res) => {
                 }
                 // Extract speed control target
                 else if (entry.Path === 'CurrentDrivableActor.Function.HUD_GetSpeedControlTarget' && entry.Values['SpeedControlTarget'] !== undefined) {
-                  formattedData.speedControlTarget = Math.round(entry.Values['SpeedControlTarget'] * 3.6);
+                  formattedData.speedControlTarget = Math.round(entry.Values['SpeedControlTarget'] * speedConversionFactor);
                 }
                 // Extract max permitted speed
                 else if (entry.Path === 'CurrentDrivableActor.Function.HUD_GetMaxPermittedSpeed' && entry.Values['MaxPermittedSpeed'] !== undefined) {
-                  formattedData.maxPermittedSpeed = Math.round(entry.Values['MaxPermittedSpeed'] * 3.6);
+                  formattedData.maxPermittedSpeed = Math.round(entry.Values['MaxPermittedSpeed'] * speedConversionFactor);
                 }
                 // Extract alerter
                 else if (entry.Path === 'CurrentDrivableActor.Function.HUD_GetAlerter' && entry.Values['Alerter'] !== undefined) {
@@ -218,13 +232,16 @@ const server = http.createServer((req, res) => {
                   formattedData.electricBrakeHandle = entry.Values['HandlePosition'];
                   // Convert to percentage
                   formattedData.electricDynamicBrake = Math.round(entry.Values['HandlePosition'] * 100);
+                  formattedData.electricBrakeActive = entry.Values['IsActive'] || false;
                 }
                 else if (entry.Path === 'CurrentDrivableActor.Function.HUD_GetLocomotiveBrakeHandle' && entry.Values['HandlePosition'] !== undefined) {
                   formattedData.locomotiveBrakeHandle = entry.Values['HandlePosition'];
+                  formattedData.locomotiveBrakeActive = entry.Values['IsActive'] || false;
                 }
                 else if (entry.Path === 'CurrentDrivableActor.Function.HUD_GetTrainBrakeHandle' && entry.Values['HandlePosition'] !== undefined) {
                   formattedData.trainBrakeHandle = entry.Values['HandlePosition'];
                   formattedData.trainBreak = Math.round(entry.Values['HandlePosition'] * 100);
+                  formattedData.trainBrakeActive = entry.Values['IsActive'] || false;
                 }
                 // Extract is traction locked
                 else if (entry.Path === 'CurrentDrivableActor.Function.HUD_GetIsTractionLocked' && entry.Values['IsTractionLocked'] !== undefined) {
@@ -267,19 +284,19 @@ const server = http.createServer((req, res) => {
                 // Extract speed limit and gradient from DriverAid.Data
                 else if (entry.Path === 'DriverAid.Data') {
                   if (entry.Values['speedLimit'] && entry.Values['speedLimit']['value']) {
-                    // Convert m/s to km/h (multiply by 3.6)
-                    formattedData.limit = Math.round(entry.Values['speedLimit']['value'] * 3.6);
+                    // Convert m/s to km/h or mph
+                    formattedData.limit = Math.round(entry.Values['speedLimit']['value'] * speedConversionFactor);
                   }
                   if (entry.Values['gradient'] !== undefined) {
                     formattedData.incline = parseFloat(entry.Values['gradient'].toFixed(1));
                   }
                   if (entry.Values['nextSpeedLimit'] && entry.Values['nextSpeedLimit']['value']) {
-                    // Convert m/s to km/h (multiply by 3.6)
-                    formattedData.nextSpeedLimit = Math.round(entry.Values['nextSpeedLimit']['value'] * 3.6);
+                    // Convert m/s to km/h or mph
+                    formattedData.nextSpeedLimit = Math.round(entry.Values['nextSpeedLimit']['value'] * speedConversionFactor);
                   }
                   if (entry.Values['distanceToNextSpeedLimit'] !== undefined) {
-                    // Convert cm to meters (divide by 100)
-                    formattedData.distanceToNextSpeedLimit = Math.round(entry.Values['distanceToNextSpeedLimit'] / 100);
+                    // Convert cm to meters or feet depending on unit preference
+                    formattedData.distanceToNextSpeedLimit = Math.round(entry.Values['distanceToNextSpeedLimit'] / distanceConversionFactor);
                   }
                 }
               }

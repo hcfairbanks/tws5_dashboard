@@ -14,7 +14,7 @@
         }
         #display {
             position: absolute;
-            top: 375px;
+            top: 560px;
             left: 10px;
             background-color: white;
             padding: 10px;
@@ -48,6 +48,12 @@
     </style>
     <script>
 
+// Global variable to track flashing state
+var flashState = false;
+setInterval(function() {
+    flashState = !flashState;
+}, 500); // Toggle every 500ms
+
 function degToRad(angle) {
     return ((angle * Math.PI) / 180);
 }
@@ -77,7 +83,7 @@ function createLine(fromX, fromY, toX, toY, stroke, width, alpha) {
 
 function buildOptionsAsJSON(canvas, iSpeed) {
     var centerX = 500,
-        centerY = 288,
+        centerY = 315,
         radius = 227,
         outerRadius = 323;
 
@@ -95,7 +101,7 @@ function buildOptionsAsJSON(canvas, iSpeed) {
 }
 
 function clearCanvas(options) {
-    options.ctx.clearRect(0, 0, 1000, 391);
+    options.ctx.clearRect(0, 0, 1000, 550);
 }
 
 function applyDefaultContextSettings(options) {
@@ -127,7 +133,7 @@ function drawMetallicArc(options) {
 function drawBackground(options) {
     options.ctx.globalAlpha = 1.0;
     options.ctx.fillStyle = "rgb(0,0,0)";
-    options.ctx.fillRect(15, 15, 970, 356);
+    options.ctx.fillRect(15, 15, 970, 512);
 }
 
 
@@ -261,8 +267,15 @@ function drawSpeedBar(options, speedLimit) {
     // Calculate the arc length based on speed (0-200 maps to 0-160 degrees)
     var arcLength = (iSpeed * 160 / 200);
     
-    // Draw white bar on top of grey background
-    var barColor = "rgb(255, 255, 255)"; // White progress bar
+    // Determine color based on speed vs speed limit (same as speed box)
+    var barColor;
+    if (speedLimit && options.speed > speedLimit + 10) {
+        barColor = "rgb(255, 0, 0)"; // Red when over limit by more than 10 km/h
+    } else if (speedLimit && options.speed > speedLimit) {
+        barColor = "rgb(255, 255, 0)"; // Yellow when over limit by up to 10 km/h
+    } else {
+        barColor = "rgb(255, 255, 255)"; // White when at or below limit
+    }
     
     // Draw colored bar on top of grey background
     options.ctx.beginPath();
@@ -285,9 +298,10 @@ function drawSpeedBox(options, speedLimit, isSlipping) {
     // Determine color based on speed vs speed limit (same as progress bar)
     var boxColor;
     if (speedLimit && options.speed > speedLimit + 10) {
-        boxColor = "rgb(255, 0, 0)"; // Red when over limit by more than 10 km/h
+        // Flash between white and red when over limit by more than 10 km/h
+        boxColor = flashState ? "rgb(255, 0, 0)" : "rgb(255, 255, 255)";
     } else if (speedLimit && options.speed > speedLimit) {
-        boxColor = "rgb(255, 255, 0)"; // Yellow when over limit by up to 10 km/h
+        boxColor = "rgb(255, 255, 0)"; // Solid yellow when over limit by up to 10 km/h
     } else {
         boxColor = "rgb(255, 255, 255)"; // White when at or below limit
     }
@@ -299,7 +313,9 @@ function drawSpeedBox(options, speedLimit, isSlipping) {
     
     // Draw zig-zag lines when slipping
     if (isSlipping) {
-        options.ctx.strokeStyle = "rgb(255, 0, 0)"; // Red lines
+        // Flash between red and white
+        var zigzagColor = flashState ? "rgb(255, 0, 0)" : "rgb(255, 255, 255)";
+        options.ctx.strokeStyle = zigzagColor;
         options.ctx.lineWidth = 2.4;
         options.ctx.globalAlpha = 0.7;
         
@@ -417,10 +433,18 @@ function drawSpeedLimitBox(options, speedLimit) {
     var boxX = 1000 - boxWidth - 26;
     var boxY = 26;
     
-    // White box
-    var boxColor = "rgb(255, 255, 255)";
+    // Determine color based on speed vs speed limit
+    var boxColor;
+    if (speedLimit && options.speed > speedLimit + 10) {
+        // Flash between white and red when over limit by more than 10 km/h
+        boxColor = flashState ? "rgb(255, 0, 0)" : "rgb(255, 255, 255)";
+    } else if (speedLimit && options.speed > speedLimit) {
+        boxColor = "rgb(255, 255, 0)"; // Solid yellow when over limit by up to 10 km/h
+    } else {
+        boxColor = "rgb(255, 255, 255)"; // White when at or below limit
+    }
     
-    // Draw white outlined box
+    // Draw outlined box
     options.ctx.strokeStyle = boxColor;
     options.ctx.lineWidth = 3.6;
     options.ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
@@ -435,17 +459,17 @@ function drawSpeedLimitBox(options, speedLimit) {
     options.ctx.fillText(displayValue, boxX + boxWidth / 2, boxY + boxHeight / 2);
 }
 
-function drawPowerHandleBox(options, powerHandle) {
+function drawPowerHandleBox(options, powerHandle, isTractionLocked) {
     var boxWidth = 97;
     var boxHeight = 61;
     // Position below speed limit box
     var boxX = 1000 - boxWidth - 26;
     var boxY = 26 + 61 + 12; // Below speed limit box with 12px gap
     
-    // White box
-    var boxColor = "rgb(255, 255, 255)";
+    // Red box when traction is locked, white otherwise
+    var boxColor = isTractionLocked ? "rgb(255, 0, 0)" : "rgb(255, 255, 255)";
     
-    // Draw white outlined box
+    // Draw outlined box
     options.ctx.strokeStyle = boxColor;
     options.ctx.lineWidth = 3.6;
     options.ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
@@ -536,7 +560,7 @@ function drawDistanceToNextSpeedLimitBox(options, distance) {
     options.ctx.fillText(displayValue, boxX + boxWidth / 2, boxY + boxHeight / 2);
 }
 
-function draw(iSpeed, speedLimit, isSlipping, powerHandle, incline, nextSpeedLimit, distanceToNextSpeedLimit, trainBrakeValue, locomotiveBrakeValue, electricDynamicBrakeValue) {
+function draw(iSpeed, speedLimit, isSlipping, powerHandle, incline, nextSpeedLimit, distanceToNextSpeedLimit, trainBrakeValue, trainBrakeActive, locomotiveBrakeValue, locomotiveBrakeActive, electricDynamicBrakeValue, electricBrakeActive, isTractionLocked) {
     var canvas = document.getElementById('tutorial');
     if (canvas !== null && canvas.getContext) {
         var options = buildOptionsAsJSON(canvas, iSpeed);
@@ -550,11 +574,17 @@ function draw(iSpeed, speedLimit, isSlipping, powerHandle, incline, nextSpeedLim
             drawCircleAtLimit(options, speedLimit);
         }
         drawSpeedBox(options, speedLimit, isSlipping);
-        drawBrakeBox(options, trainBrakeValue);
-        drawLocomotiveBrakeBox(options, locomotiveBrakeValue);
-        drawElectricDynamicBrakeBox(options, electricDynamicBrakeValue);
+        if (trainBrakeActive) {
+            drawBrakeBox(options, trainBrakeValue);
+        }
+        if (locomotiveBrakeActive) {
+            drawLocomotiveBrakeBox(options, locomotiveBrakeValue);
+        }
+        if (electricBrakeActive) {
+            drawElectricDynamicBrakeBox(options, electricDynamicBrakeValue);
+        }
         drawSpeedLimitBox(options, speedLimit);
-        drawPowerHandleBox(options, powerHandle);
+        drawPowerHandleBox(options, powerHandle, isTractionLocked);
         drawGradientBox(options, incline);
         if (distanceToNextSpeedLimit !== undefined && distanceToNextSpeedLimit !== null && distanceToNextSpeedLimit > 1) {
             drawNextSpeedLimitBox(options, nextSpeedLimit);
@@ -569,19 +599,30 @@ function draw(iSpeed, speedLimit, isSlipping, powerHandle, incline, nextSpeedLim
 </head>
 <body onload='draw(0);'>
    
-    <canvas id="tutorial" width="1000" height="391">Canvas not available.</canvas>
+    <canvas id="tutorial" width="1000" height="550">Canvas not available.</canvas>
     
     <div id="display">Waiting for data...</div>    
     <script>
         // Connect to the server's /stream endpoint
         const eventSource = new EventSource('/stream');
 
+        // Store current data globally
+        var currentData = null;
+        
+        // Redraw at regular intervals to support flashing
+        setInterval(function() {
+            if (currentData) {
+                draw(Math.round(currentData.speed), currentData.limit, currentData.isSlipping, currentData.powerHandle, currentData.incline, currentData.nextSpeedLimit, currentData.distanceToNextSpeedLimit, currentData.trainBreak, currentData.trainBrakeActive, currentData.locomotiveBrakeHandle, currentData.locomotiveBrakeActive, currentData.electricDynamicBrake, currentData.electricBrakeActive, currentData.isTractionLocked);
+            }
+        }, 100); // Redraw every 100ms for smooth flashing
+        
         eventSource.onmessage = (event) => {
             const data = JSON.parse(event.data);
+            currentData = data;
             // Display the data on the page
             document.getElementById('display').innerText = JSON.stringify(data, null, 2);
             // Update the speedometer with the new speed value and limit
-            draw(Math.round(data.speed), data.limit, data.isSlipping, data.powerHandle, data.incline, data.nextSpeedLimit, data.distanceToNextSpeedLimit, data.trainBreak, data.locomotiveBrakeHandle, data.electricDynamicBrake);
+            draw(Math.round(data.speed), data.limit, data.isSlipping, data.powerHandle, data.incline, data.nextSpeedLimit, data.distanceToNextSpeedLimit, data.trainBreak, data.trainBrakeActive, data.locomotiveBrakeHandle, data.locomotiveBrakeActive, data.electricDynamicBrake, data.electricBrakeActive, data.isTractionLocked);
         };
 
         eventSource.onerror = () => {
