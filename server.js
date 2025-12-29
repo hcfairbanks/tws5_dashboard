@@ -71,6 +71,27 @@ let apiKey = '';
 (async () => {
     apiKey = await waitForValidApiKey();
 
+/**
+ * Deletes the existing subscription before creating new ones
+ */
+async function deleteSubscription() {
+    console.log('Deleting old subscription...');
+    try {
+        const config = {
+            method: 'delete',
+            maxBodyLength: Infinity,
+            url: 'http://localhost:31270/subscription?Subscription=1',
+            headers: { 
+                'DTGCommKey': apiKey
+            }
+        };
+        const response = await axios.request(config);
+        console.log('Old subscription deleted successfully');
+    } catch (err) {
+        console.error('Failed to delete old subscription, old subscription may not exist. Error Message:', err.message);
+    }
+}
+
 // Flag to track if subscriptions have been created
 let subscriptionsCreated = false;
 
@@ -380,8 +401,10 @@ const server = http.createServer((req, res) => {
   }
 });
 
-// Create subscriptions once before starting the server
-createSubscriptions().then(() => {
+// Delete old subscription and create new subscriptions once before starting the server
+deleteSubscription().then(() => {
+  return createSubscriptions();
+}).then(() => {
   const port = 3000;
   server.listen(port, '0.0.0.0', () => {
     const myIp = getInternalIpAddress();
