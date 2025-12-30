@@ -96,7 +96,9 @@ async function deleteSubscription() {
 let subscriptionsCreated = false;
 
 // Array of subscription endpoints to create
+// For some reason it always seems to fail on the first one, so we include it twice to be sure
 const subscriptionEndpoints = [
+    '/subscription/DriverAid.Data?Subscription=1',
     '/subscription/DriverAid.Data?Subscription=1',
     '/subscription/TimeOfDay.Data?Subscription=1 ',
     '/subscription/CurrentDrivableActor.Function.HUD_GetSpeed?Subscription=1',
