@@ -99,7 +99,6 @@ let subscriptionsCreated = false;
 // For some reason it always seems to fail on the first one, so we include it twice to be sure
 const subscriptionEndpoints = [
     '/subscription/DriverAid.Data?Subscription=1',
-    '/subscription/DriverAid.Data?Subscription=1',
     '/subscription/TimeOfDay.Data?Subscription=1 ',
     '/subscription/CurrentDrivableActor.Function.HUD_GetSpeed?Subscription=1',
     '/subscription/CurrentDrivableActor.Function.HUD_GetDirection?Subscription=1',
@@ -413,6 +412,9 @@ const server = http.createServer((req, res) => {
 
 // Delete old subscription and create new subscriptions once before starting the server
 deleteSubscription().then(() => {
+  // Wait 500ms after deleting subscription before creating new ones to give TSW API time to process
+  return sleep(500);
+}).then(() => {
   return createSubscriptions();
 }).then(() => {
   const port = 3000;
